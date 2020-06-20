@@ -1,14 +1,16 @@
-# encoding: utf-8
+# frozen_string_literal: true
 
 class ClothesLib
   attr_reader :clothes_lib
 
-  def self.create_lib(major_path)
+  def self.create_lib(path)
     clothes_lib =
-      ClothesLib.sorted_paths(major_path).map do |file|
-        ItemOfClothing.new(*File.readlines(file, chomp: true))
+      Dir[File.join("#{path}*")].map do |file|
+        params = File.readlines(file, chomp: true)
+        params[2] = params[2][/[+|-]?\d+,\s?[+|-]?\d+/].split(',').map(&:to_i)
+        ClothingItem.new(*params)
       end
-    ClothesLib.new(clothes_lib)
+    new(clothes_lib)
   end
 
   def initialize(clothes_lib)
@@ -16,22 +18,12 @@ class ClothesLib
   end
 
   def match_clothes(temp)
-    by_type(types).map.with_index do |element_of_clothes, index|
-      element_of_clothes.select! { |element| element.temp_match?(temp) }
-      if element_of_clothes.empty? && [0, 1, 2, 3].include?(index)
-        ["#{types[index]}: нет подходящей одежды!"]
-      else
-        element_of_clothes
-      end
+    by_type(types).map do |element_of_clothes|
+      element_of_clothes.select { |element| element.temp_match?(temp) }.sample
     end.compact
   end
 
   private
-
-  def self.sorted_paths(major_path)
-    directories = Dir[File.join("#{major_path}/*")].sort
-    directories.map{ |path_to_directory| Dir["#{path_to_directory}/*"] }.flatten
-  end
 
   def types
     clothes_lib.map(&:type).uniq
